@@ -11,6 +11,7 @@ add_plugin_hook('config', 'cc_config');
 
 add_plugin_hook('after_save_item', 'cc_save_license');
 add_plugin_hook('append_to_item_form', 'cc_form');
+// add_filter('admin_items_form_tabs', 'cc_item_form_tabs');
 add_plugin_hook('admin_append_to_items_show_secondary', 'cc_admin_for_item');
 
 add_plugin_hook('append_to_item_show', 'cc_for_item');
@@ -50,10 +51,28 @@ function cc_config_form()
 function cc_config()
 {
     //Use the form to set a bunch of default options in the db
-
-    set_option('default_license_uri', $_POST['default_license_uri']);
+    set_option('default_license_uri', $_POST['cc_js_result_uri']);
 }
 
+
+/**
+ * Add Creative Commons tab to the edit item page
+ * @return array
+ **/
+function cc_item_form_tabs($tabs)
+{
+    // insert the map tab before the Miscellaneous tab
+    $item = get_current_item();
+    $ttabs = array();
+    foreach($tabs as $key => $html) {
+        if ($key == 'Miscellaneous') {
+            $ttabs['CreativeCommons'] = cc_form($item);
+        }
+        $ttabs[$key] = $html;
+    }
+    $tabs = $ttabs;
+    return $tabs;
+}
 
 /**
  * Each time we save an item, check the POST to see if we are also saving a 
