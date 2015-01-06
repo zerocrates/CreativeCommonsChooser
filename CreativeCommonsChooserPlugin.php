@@ -21,6 +21,7 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
      * @var array Hooks for the plugin.
      */
     protected $_hooks = array(
+        'initialize',
         'install',
         'uninstall',
         'config_form',
@@ -45,6 +46,14 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
     protected $_options = array(
         'creativecommonschooser_default_license_uri' => '',
     );
+
+    /**
+     * Initialize hook.
+     */
+    public function hookInitialize()
+    {
+        add_shortcode('cc', array($this, 'shortcodeCreativeCommons'));
+    }
 
     /**
      * Install the plugin.
@@ -210,7 +219,10 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
         $view = $args['view'];
         $item = $args['item'];
 
-        echo $view->ccWidget($item);
+        echo $view->ccWidget($item, array(
+            'title' => true,
+            'display' => 'image',
+        ));
     }
 
     /**
@@ -250,6 +262,42 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
         $html .= '</div>';
 
         return $html;
+    }
+
+    /**
+     * Shortcode for adding a Creative Commons widget.
+     *
+     * @param array $args
+     * @param Omeka_View $view
+     * @return string
+     */
+    public function shortcodeCreativeCommons($args, $view)
+    {
+        // Check required arguments
+        if (empty($args['item_id'])) {
+            $item = get_current_record('item');
+        }
+        else {
+            $item = get_record_by_id('Item', (integer) $args['item_id']);
+        }
+        if (empty($item)) {
+            return;
+        }
+
+        $title = isset($args['title'])
+            ? $args['title']
+            : false;
+
+        $display = isset($args['display'])
+            ? $args['display']
+            : 'image';
+
+        $options = array(
+            'display' => $display,
+            'title' => $title,
+        );
+
+        return $view->ccWidget($item, $options);
     }
 
     /**
