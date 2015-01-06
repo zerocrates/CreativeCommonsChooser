@@ -26,6 +26,7 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
         'config_form',
         'config',
         'after_save_item',
+        'after_delete_item',
         'admin_head',
         'admin_items_show_sidebar',
         'public_items_show',
@@ -155,6 +156,18 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
             if ($cc) {
                 $cc->delete();
             }
+        }
+    }
+
+    /**
+     * Hook used when an item is removed.
+     */
+    public function hookAfterDeleteItem($args)
+    {
+        $item = $args['record'];
+        $ccs = $this->_db->getTable('CC')->findLicenseByItem($item, false);
+        foreach ($ccs as $cc) {
+            $cc->delete();
         }
     }
 
