@@ -24,7 +24,7 @@ class CreativeCommonsChooser_View_Helper_CcWidget extends Zend_View_Helper_Abstr
 
        // Check the display option.
        if (!isset($options['display']) || !in_array($options['display'], array('text', 'both', 'image'))) {
-           $options['display'] == 'image';
+           $options['display'] = 'image';
        }
 
        return $this->view->partial('common/creative-commons-chooser.php', $options);
