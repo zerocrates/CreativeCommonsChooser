@@ -26,6 +26,7 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
         'uninstall',
         'config_form',
         'config',
+        'before_save_item',
         'after_save_item',
         'after_delete_item',
         'admin_head',
@@ -45,6 +46,8 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
      */
     protected $_options = array(
         'creativecommonschooser_default_license_uri' => '',
+        'creativecommonschooser_sync_dclicence' => 'none',
+        'creativecommonschooser_field_format' => 'text',
     );
 
     /**
@@ -106,19 +109,123 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
      */
     public function hookConfig($args)
     {
+        // The config form is not standard, so it can't be manage automatically.
         $post = $args['post'];
 
         // Use the form to set a bunch of default options in the db.
         set_option('creativecommonschooser_default_license_uri', $post['cc_js_result_uri']);
+
+        set_option('creativecommonschooser_sync_dclicence', $post['creativecommonschooser_sync_dclicence']);
+        set_option('creativecommonschooser_field_format', $post['creativecommonschooser_field_format']);
+    }
+
+    /**
+     * Each time an item is saved, update the standard Dublin Core element too.
+     *
+     * @internal Because element texts are managed after saved, the previous
+     * value is removed in the hook after_save_item.
+     *
+     * @return void
+     */
+    public function hookBeforeSaveItem($args)
+    {
+        // Only manage manual changes.
+        if (!$args['post']) {
+            return;
+        }
+
+        $item = $args['record'];
+        $post = $args['post'];
+
+        // If there is no creative commons form on the page, don't do anything!
+        // TODO Currently, there is no update from field to CC.
+        if (empty($post['cc_js_result_uri'])) {
+            return;
+        }
+
+        // Check if a sync should be done.
+        $sync = get_option('creativecommonschooser_sync_dclicence') ?: 'none';
+        if ($sync == 'none') {
+            return;
+        }
+
+        // Avoid impossible choices.
+        if (in_array($sync, array('into_licence', 'from_licence'))
+                && !plugin_is_active('DublinCoreExtended')
+            ) {
+            return;
+        }
+
+        // Get the active licence, if any.
+        $cc = $this->_getLicenseForItem($item);
+
+        // There is a cc, so this is an update, so check if the licence changed.
+        if ($cc) {
+            // User update without a cc licence.
+            if ($post['cc_js_result_name'] == 'No license chosen') {
+                if ($cc->is_cc == false) {
+                    return;
+                }
+            }
+            // User update with a licence. Only the uri is checked, because this
+            // is the most stable value.
+            else {
+                if ($cc->is_cc && $cc->cc_uri == $post['cc_js_result_uri']) {
+                    return;
+                }
+            }
+        }
+
+        // The licence changed, so update the Dublin Core element.
+
+        // Copy the new cc licence into DC.
+        if (!empty($post)
+                && (!empty($post['cc_js_result_uri'])
+                    && !empty($post['cc_js_result_name']))
+            ) {
+
+            // No translation, because it comes from Creative Commons.
+            if ($post['cc_js_result_name'] == 'No license chosen') {
+                return;
+            }
+
+            // This isn't the true cc of the item. The true one is managed in
+            // hook after_save_item.
+            $cc = array();
+            if ($post['cc_js_result_name'] == 'No license chosen') {
+                $cc['is_cc'] = false;
+            }
+            else {
+                $cc['is_cc'] = true;
+                $cc['cc_name'] = $post['cc_js_result_name'];
+                $cc['cc_uri'] = $post['cc_js_result_uri'];
+                $cc['cc_img'] = $post['cc_js_result_img'];
+            }
+            $format = get_option('creativecommonschooser_field_format') ?: 'text';
+            $elementText = $this->_getLicenseForDC($cc, $format);
+            if ($elementText) {
+                $elementSetName = 'Dublin Core';
+                $elementName = in_array($sync, array('into_licence', 'from_licence'))
+                        || ($sync == 'auto' && plugin_is_active('DublinCoreExtended'))
+                    ? 'Licence'
+                    : 'Rights';
+                $element = $item->getElement($elementSetName, $elementName);
+                $isHtml = in_array($format, array('html_link', 'image_link'));
+                $item->addTextForElement($element, $elementText, $isHtml);
+            }
+        }
     }
 
     /**
      * Each time an item is saved, check if a licence is saved too.
      *
+     * @internal The sync with Dublin Core, if any, is done before save.
+     *
      * @return void
      */
     public function hookAfterSaveItem($args)
     {
+        // Only manage manual changes.
         if (!$args['post']) {
             return;
         }
@@ -134,10 +241,53 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
         // Get the active licence, if any.
         $cc = $this->_getLicenseForItem($item);
 
+        // Remove the active licence in Dublin Core, if any, and if changed.
+        // Internal: It can't be done easily before save for technical reasons.
+
+        // Check if a sync should be done.
+        $sync = get_option('creativecommonschooser_sync_dclicence') ?: 'none';
+
+        // There is a cc, so this is an update, so check if the licence changed.
+        if ($sync != 'none' && !$args['insert'] && $cc) {
+            $updated = false;
+            // User update without a cc licence.
+            if ($post['cc_js_result_name'] == 'No license chosen') {
+                $updated = $cc->is_cc;
+            }
+            // User update with a licence. Only the uri is checked, because this
+            // is the most stable value.
+            else {
+                $updated = !($cc->is_cc && $cc->cc_uri == $post['cc_js_result_uri']);
+            }
+
+            // If the licence changed, remove the previous element.
+            if ($updated) {
+                // Get the element to update.
+                $elementSetName = 'Dublin Core';
+                $elementName = in_array($sync, array('into_licence', 'from_licence'))
+                        || ($sync == 'auto' && plugin_is_active('DublinCoreExtended'))
+                    ? 'Licence'
+                    : 'Rights';
+                if ($item->hasElementText($elementSetName, $elementName)) {
+                    $licences = $item->getElementTexts($elementSetName, $elementName);
+                    $licenceValues = $this->_getLicenseForDC($cc);
+                    // Don't use deleteElementTextsByElementId()
+                    // because it isn't a clean way.
+                    foreach ($licences as $licence) {
+                        if (in_array($licence->text, $licenceValues)) {
+                            $licence->delete();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Set or remove the new cc licence.
         // If the license is filled out, then submit to the db.
         if (!empty($post)
-            && (!empty($post['cc_js_result_uri'])
-                && !empty($post['cc_js_result_name']))) {
+                && (!empty($post['cc_js_result_uri'])
+                    && !empty($post['cc_js_result_name']))
+            ) {
 
             if (empty($cc)) {
                 $cc = new CC;
@@ -301,13 +451,54 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
     }
 
     /**
-     * Return the license record for the given item_id (if exists)
+     * Return the license record for the given item_id (if exists).
      *
      * @param array|Item|int $item
      * @return array
      */
-    function _getLicenseForItem($item)
+    protected function _getLicenseForItem($item)
     {
         return $this->_db->getTable('CC')->findLicenseByItem($item, true);
+    }
+
+    /**
+     * Return the license for Dublin Core, according to the selected dformat.
+     *
+     * @param CC|array $cc Contains chosen values (text, url and image).
+     * @param string $format All format if 'all', else selected format.
+     * @return string|array The licence with the selected format or all formats.
+     */
+    protected function _getLicenseForDC($cc, $format = 'all')
+    {
+        if (is_array($cc)) {
+            $cc = (object) $cc;
+        }
+
+        if (empty($cc->is_cc)) {
+            return $format == 'all' ? array() : '';
+        }
+
+        switch ($format) {
+            case 'text':
+                return $cc->cc_name;
+            case 'url':
+                return $cc->cc_uri;
+            case 'link':
+                return sprintf('<a href="%s" rel="license" class="cc_info">%s</a>',
+                    $cc->cc_uri, $cc->cc_name);
+            case 'button':
+                return sprintf('<a href="%s" rel="license" class="cc_info">'
+                        . '<img class="cc_js_cc-button" src="%s" alt="Creative Commons License" />'
+                        . '</a>',
+                    $cc->cc_uri, $cc->cc_img);
+            // Return the values for all formats.
+            case 'all':
+                return array(
+                    'text' => $this->_getLicenseForDC($cc, 'text'),
+                    'url' => $this->_getLicenseForDC($cc, 'url'),
+                    'link' => $this->_getLicenseForDC($cc, 'link'),
+                    'button' => $this->_getLicenseForDC($cc, 'button'),
+                );
+        }
     }
 }

@@ -29,6 +29,12 @@ class Table_CC extends Omeka_Db_Table
                 : (integer) $value;
         }
 
+        // Remove items without id (when they are not yet saved).
+        $items = array_filter($items);
+        if (empty($items)) {
+            return null;
+        }
+
         $limit = $findOnlyOne ? 1 : null;
         $results = $this->findBy(
             array(
