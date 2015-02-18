@@ -19,28 +19,28 @@
 <fieldset id="fieldset-creative-commons-chooser-sync"><legend><?php echo __('Save choice'); ?></legend>
     <div class="field">
         <div class="two columns alpha">
-            <?php echo $this->formLabel('creativecommonschooser_sync_dclicence',
+            <?php echo $this->formLabel('creativecommonschooser_sync_dclicense',
                 __('Sync with Dublin Core')); ?>
         </div>
         <div class="inputs five columns omega">
             <p class="explanation">
-                <?php echo __('The choice can be synced with the standard element Dublin Core Rights, or Licence if Dublin Core Extended is installed [%s].',
+                <?php echo __('The choice can be synced with the standard element Dublin Core Rights, or License if Dublin Core Extended is installed [%s].',
                     plugin_is_active('DublinCoreExtended') ? __('yes') : __('no' )); ?>
-                <?php echo __('Sync can be done from CC chooser into Dublin Core Rights or Licence only.'); ?>
+                <?php echo __('Sync can be done from CC chooser into Dublin Core Rights or License only.'); ?>
             </p>
             <?php
             $select = array(
                 'none' => __('Keep data unsynchronized'),
-                'auto' => __('Copy from CC chooser into DC Licence if exists, else DC Rights'),
+                'auto' => __('Copy from CC chooser into DC License if exists, else DC Rights'),
                 'into_rights' => __('Copy from CC chooser into DC Rights'),
                 // 'from_rights' => __('Copy from DC Rights into CC chooser'),
             );
             if (plugin_is_active('DublinCoreExtended')) {
-                $select['into_licence'] = __('Copy from CC chooser into DC Licence');
-                // $select['from_licence'] = __('Copy from DC Licence into CC chooser');
+                $select['into_license'] = __('Copy from CC chooser into DC License');
+                // $select['from_license'] = __('Copy from DC License into CC chooser');
             }
-            echo $this->formRadio('creativecommonschooser_sync_dclicence',
-                get_option('creativecommonschooser_sync_dclicence'), null, $select); ?>
+            echo $this->formRadio('creativecommonschooser_sync_dclicense',
+                get_option('creativecommonschooser_sync_dclicense'), null, $select); ?>
         </div>
     </div>
     <div class="field">
@@ -50,7 +50,7 @@
         </div>
         <div class="inputs five columns omega">
             <p class="explanation">
-                <?php echo __('The element Rights / Licence can be a simple text or an html link.'); ?>
+                <?php echo __('The element Rights / License can be a simple text or an html link.'); ?>
             </p>
             <?php
             echo $this->formSelect('creativecommonschooser_field_format',

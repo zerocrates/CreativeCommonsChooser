@@ -12,7 +12,7 @@ Installation
 Unzip [Creative Commons Chooser] into the plugin directory, rename the folder
 "CreativeCommonsChooser" if needed, then install it from the settings panel.
 
-The selected licence for an item is automatically appended to items/show pages
+The selected license for an item is automatically appended to items/show pages
 and it can be themed.
 
 A helper (`ccWidget()`) and a shortcode are available too, if needed. The
@@ -60,7 +60,7 @@ this program; if not, write to the Free Software Foundation, Inc.,
 
 
 This plugin contains the Creative Commons library with another free and open
-source licence. See `views/shared/javascripts` folder.
+source license. See `views/shared/javascripts` folder.
 
 
 Contact

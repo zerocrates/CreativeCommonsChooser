@@ -5,7 +5,7 @@
 class Table_CC extends Omeka_Db_Table
 {
     /**
-     * Return an indexed array of licences (or a unique licence) for one or
+     * Return an indexed array of licenses (or a unique license) for one or
      * multiple items.
      *
      * @param array|Item|int $item One or multiple items.

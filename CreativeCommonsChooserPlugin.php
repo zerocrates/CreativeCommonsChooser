@@ -46,7 +46,7 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
      */
     protected $_options = array(
         'creativecommonschooser_default_license_uri' => '',
-        'creativecommonschooser_sync_dclicence' => 'none',
+        'creativecommonschooser_sync_dclicense' => 'none',
         'creativecommonschooser_field_format' => 'text',
     );
 
@@ -109,13 +109,13 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
      */
     public function hookConfig($args)
     {
-        // The config form is not standard, so it can't be manage automatically.
+        // The config form isn't standard, so it can't be managed automatically.
         $post = $args['post'];
 
         // Use the form to set a bunch of default options in the db.
         set_option('creativecommonschooser_default_license_uri', $post['cc_js_result_uri']);
 
-        set_option('creativecommonschooser_sync_dclicence', $post['creativecommonschooser_sync_dclicence']);
+        set_option('creativecommonschooser_sync_dclicense', $post['creativecommonschooser_sync_dclicense']);
         set_option('creativecommonschooser_field_format', $post['creativecommonschooser_field_format']);
     }
 
@@ -144,30 +144,30 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
         }
 
         // Check if a sync should be done.
-        $sync = get_option('creativecommonschooser_sync_dclicence') ?: 'none';
+        $sync = get_option('creativecommonschooser_sync_dclicense') ?: 'none';
         if ($sync == 'none') {
             return;
         }
 
         // Avoid impossible choices.
-        if (in_array($sync, array('into_licence', 'from_licence'))
+        if (in_array($sync, array('into_license', 'from_license'))
                 && !plugin_is_active('DublinCoreExtended')
             ) {
             return;
         }
 
-        // Get the active licence, if any.
+        // Get the active license, if any.
         $cc = $this->_getLicenseForItem($item);
 
-        // There is a cc, so this is an update, so check if the licence changed.
+        // There is a cc, so this is an update, so check if the license changed.
         if ($cc) {
-            // User update without a cc licence.
+            // User update without a cc license.
             if ($post['cc_js_result_name'] == 'No license chosen') {
                 if ($cc->is_cc == false) {
                     return;
                 }
             }
-            // User update with a licence. Only the uri is checked, because this
+            // User update with a license. Only the uri is checked, because this
             // is the most stable value.
             else {
                 if ($cc->is_cc && $cc->cc_uri == $post['cc_js_result_uri']) {
@@ -176,9 +176,9 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
             }
         }
 
-        // The licence changed, so update the Dublin Core element.
+        // The license changed, so update the Dublin Core element.
 
-        // Copy the new cc licence into DC.
+        // Copy the new cc license into DC.
         if (!empty($post)
                 && (!empty($post['cc_js_result_uri'])
                     && !empty($post['cc_js_result_name']))
@@ -205,9 +205,9 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
             $elementText = $this->_getLicenseForDC($cc, $format);
             if ($elementText) {
                 $elementSetName = 'Dublin Core';
-                $elementName = in_array($sync, array('into_licence', 'from_licence'))
+                $elementName = in_array($sync, array('into_license', 'from_license'))
                         || ($sync == 'auto' && plugin_is_active('DublinCoreExtended'))
-                    ? 'Licence'
+                    ? 'License'
                     : 'Rights';
                 $element = $item->getElement($elementSetName, $elementName);
                 $isHtml = in_array($format, array('html_link', 'image_link'));
@@ -217,7 +217,7 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
     }
 
     /**
-     * Each time an item is saved, check if a licence is saved too.
+     * Each time an item is saved, check if a license is saved too.
      *
      * @internal The sync with Dublin Core, if any, is done before save.
      *
@@ -238,51 +238,51 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
             return;
         }
 
-        // Get the active licence, if any.
+        // Get the active license, if any.
         $cc = $this->_getLicenseForItem($item);
 
-        // Remove the active licence in Dublin Core, if any, and if changed.
+        // Remove the active license in Dublin Core, if any, and if changed.
         // Internal: It can't be done easily before save for technical reasons.
 
         // Check if a sync should be done.
-        $sync = get_option('creativecommonschooser_sync_dclicence') ?: 'none';
+        $sync = get_option('creativecommonschooser_sync_dclicense') ?: 'none';
 
-        // There is a cc, so this is an update, so check if the licence changed.
+        // There is a cc, so this is an update, so check if the license changed.
         if ($sync != 'none' && !$args['insert'] && $cc) {
             $updated = false;
-            // User update without a cc licence.
+            // User update without a cc license.
             if ($post['cc_js_result_name'] == 'No license chosen') {
                 $updated = $cc->is_cc;
             }
-            // User update with a licence. Only the uri is checked, because this
+            // User update with a license. Only the uri is checked, because this
             // is the most stable value.
             else {
                 $updated = !($cc->is_cc && $cc->cc_uri == $post['cc_js_result_uri']);
             }
 
-            // If the licence changed, remove the previous element.
+            // If the license changed, remove the previous element.
             if ($updated) {
                 // Get the element to update.
                 $elementSetName = 'Dublin Core';
-                $elementName = in_array($sync, array('into_licence', 'from_licence'))
+                $elementName = in_array($sync, array('into_license', 'from_license'))
                         || ($sync == 'auto' && plugin_is_active('DublinCoreExtended'))
-                    ? 'Licence'
+                    ? 'License'
                     : 'Rights';
                 if ($item->hasElementText($elementSetName, $elementName)) {
-                    $licences = $item->getElementTexts($elementSetName, $elementName);
-                    $licenceValues = $this->_getLicenseForDC($cc);
+                    $licenses = $item->getElementTexts($elementSetName, $elementName);
+                    $licenseValues = $this->_getLicenseForDC($cc);
                     // Don't use deleteElementTextsByElementId()
                     // because it isn't a clean way.
-                    foreach ($licences as $licence) {
-                        if (in_array($licence->text, $licenceValues)) {
-                            $licence->delete();
+                    foreach ($licenses as $license) {
+                        if (in_array($license->text, $licenseValues)) {
+                            $license->delete();
                         }
                     }
                 }
             }
         }
 
-        // Set or remove the new cc licence.
+        // Set or remove the new cc license.
         // If the license is filled out, then submit to the db.
         if (!empty($post)
                 && (!empty($post['cc_js_result_uri'])
@@ -355,7 +355,7 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
         $item = $args['item'];
 
         $html = '<div class="info panel">';
-        $html .= '<h4>' . __('Creative Commons Licence') . '</h4>';
+        $html .= '<h4>' . __('Creative Commons License') . '</h4>';
         $html .= '<div><p>';
         $html .= $view->ccWidget($item);
         $html .= '</p></div>';
@@ -466,7 +466,7 @@ class CreativeCommonsChooserPlugin extends Omeka_Plugin_AbstractPlugin
      *
      * @param CC|array $cc Contains chosen values (text, url and image).
      * @param string $format All format if 'all', else selected format.
-     * @return string|array The licence with the selected format or all formats.
+     * @return string|array The license with the selected format or all formats.
      */
     protected function _getLicenseForDC($cc, $format = 'all')
     {
