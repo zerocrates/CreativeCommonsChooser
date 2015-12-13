@@ -18,7 +18,7 @@ class CC extends Omeka_Record_AbstractRecord
 
     protected function _validate()
     {
-        if ($is_cc) {
+        if ($this->is_cc) {
             if (empty($this->cc_name) && empty($this->cc_uri)) {
                 $this->addError(null, __('Error in Creative Commons License.'));
             }
